@@ -4,15 +4,14 @@ import { ElNotification, ElMessage } from "element-plus";
 import { OAuth2Platforms, loginWithOAuth2, LoginApi } from "@/services/apis/auth";
 import { userInfo } from "@/services/apis/user";
 import { useRouteQuery } from "@vueuse/router";
-import { strLengthLimit } from "@/utils/utils";
+import { strLengthLimit, getAppIcon } from "@/utils";
 import { userStore } from "@/stores/user";
 import router from "@/router/index";
-import { getAppIcon } from "@/utils/utils";
 
 const platforms: { [key: string]: { name: string; class: string } } = {
   github: {
     name: "Github",
-    class: "btn-black"
+    class: "btn-white"
   },
   microsoft: {
     name: "Microsoft",
@@ -186,11 +185,11 @@ onMounted(async () => {
       <button class="btn m-[10px]" @click="login">登录</button>
     </form>
     <br />
-    <div class="sm:w-96 w-full m-auto">
+    <div v-if="OAuth2Platforms_?.enabled" class="sm:w-96 w-full m-auto">
       <h4 class="text-[18px] font-bold">使用第三方平台登录</h4>
       <button
         v-for="item in OAuth2Platforms_?.enabled"
-        :class="`inline-flex  items-center btn ${
+        :class="`inline-flex items-center btn ${
           platforms[item] ? platforms[item].class : 'btn-black'
         } m-[10px] hover:px-[10px]`"
         @click="useOAuth2(item)"

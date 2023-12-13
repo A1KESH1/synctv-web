@@ -1,23 +1,24 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { ElNotification } from "element-plus";
-import { roomListApi } from "@/services/apis/room";
-import { myRoomList } from "@/services/apis/user";
 import { roomStatus, type RoomList } from "@/types/Room";
 import JoinRoom from "@/views/JoinRoom.vue";
 import { userStore } from "@/stores/user";
 import { Search } from "@element-plus/icons-vue";
 import { useTimeAgo } from "@vueuse/core";
 import { useRouter } from "vue-router";
+import { useRoomApi } from "@/hooks/useRoom";
+import { getObjValue } from "@/utils";
 
 const router = useRouter();
 const props = defineProps<{
   isMyRoom: boolean;
+  isHot: boolean;
+  userId?: string;
 }>();
 
-const { token, isLogin } = userStore();
-const __roomList = ref<RoomList[]>([]);
-const JoinRoomDialog = ref(false);
+const { isLogin, info } = userStore();
+const thisRoomList = ref<RoomList[]>([]);
 const formData = ref<{
   roomId: string;
   password: string;
@@ -26,7 +27,42 @@ const formData = ref<{
   password: ""
 });
 
-const openJoinRoomDialog = (item: RoomList) => {
+const {
+  totalItems,
+  currentPage,
+  pageSize,
+  order,
+  sort,
+  keyword,
+  search,
+  status,
+  getRoomList: getRoomList_,
+  roomList,
+
+  getMyRoomList,
+  myRoomList,
+
+  getHotRoomList,
+  hotRoomList,
+
+  joinRoom
+} = useRoomApi(formData.value.roomId);
+
+const getRoomList = async (showMsg = false) => {
+  if (props.isMyRoom) {
+    await getMyRoomList(showMsg);
+    if (myRoomList.value) thisRoomList.value = myRoomList.value.list!;
+  } else if (props.isHot) {
+    await getHotRoomList(showMsg);
+    if (hotRoomList.value) if (hotRoomList.value.list) thisRoomList.value = hotRoomList.value.list;
+  } else {
+    await getRoomList_();
+    if (roomList.value) thisRoomList.value = roomList.value.list!;
+  }
+};
+
+const JoinRoomDialog = ref(false);
+const joinThisRoom = async (item: RoomList) => {
   if (!isLogin.value) {
     ElNotification({
       title: "错误",
@@ -34,83 +70,18 @@ const openJoinRoomDialog = (item: RoomList) => {
       type: "error"
     });
     router.replace({
-        name: "login",
-        query: {
-          redirect: router.currentRoute.value.fullPath
-        }
-      });
+      name: "login",
+      query: {
+        redirect: router.currentRoute.value.fullPath
+      }
+    });
     return;
   }
   formData.value.roomId = item.roomId;
-  JoinRoomDialog.value = true;
-};
 
-const { state: roomList, execute: reqRoomList } = roomListApi();
-const { state: myRoomList_, execute: reqMyRoomList } = myRoomList();
-const totalItems = ref(0);
-const currentPage = ref(1);
-const pageSize = ref(10);
-const order = ref("desc");
-const sort = ref("name");
-const keyword = ref("");
-const search = ref("all");
-const status = ref("");
-
-const getRoomList = async (showMsg = false) => {
-  try {
-    if (props.isMyRoom) {
-      await reqMyRoomList({
-        params: {
-          page: currentPage.value,
-          max: pageSize.value,
-          sort: sort.value,
-          order: order.value,
-          search: search.value,
-          keyword: keyword.value,
-          status: status.value
-        },
-        headers: {
-          Authorization: token.value
-        }
-      });
-    } else {
-      await reqRoomList({
-        params: {
-          page: currentPage.value,
-          max: pageSize.value,
-          sort: sort.value,
-          order: order.value,
-          search: "all",
-          keyword: ""
-        }
-      });
-    }
-
-    if (props.isMyRoom) {
-      if (myRoomList_.value && myRoomList_.value.list) {
-        totalItems.value = myRoomList_.value.total;
-        __roomList.value = myRoomList_.value.list;
-      }
-    } else {
-      if (roomList.value && roomList.value.list) {
-        totalItems.value = roomList.value.total;
-        __roomList.value = roomList.value.list;
-      }
-    }
-
-    showMsg &&
-      ElNotification({
-        title: `更新列表成功`,
-        type: "success"
-      });
-  } catch (err: any) {
-    console.error(err.message);
-    ElNotification({
-      title: "错误",
-      message: err.response.data.error || err.message,
-      type: "error"
-    });
-  }
+  info.value?.username === item.creator || !item.needPassword
+    ? await joinRoom(formData.value)
+    : (JoinRoomDialog.value = true);
 };
 
 onMounted(() => {
@@ -121,11 +92,8 @@ onMounted(() => {
 <template>
   <div class="card mx-auto">
     <div class="card-title flex flex-wrap justify-between items-center">
-      <div class="max-sm:mb-3">
-        <span v-if="!isMyRoom"> 房间列表（{{ __roomList.length }}）</span>
-        <span v-else>我创建的（{{ __roomList.length }}）</span>
-      </div>
-      <div class="text-base -my-2">
+      <div class="max-sm:mb-3"><slot name="title"></slot>（{{ thisRoomList.length }}）</div>
+      <div class="text-base -my-2" v-if="!isHot">
         排序方式：<el-select
           v-model="sort"
           class="m-2"
@@ -146,7 +114,7 @@ onMounted(() => {
         </button>
       </div>
     </div>
-    <div class="card-body">
+    <div class="card-body" :class="{ 'text-center': !isHot }">
       <div class="m-auto w-96 mb-3 flex" v-if="isMyRoom">
         <el-select
           v-model="status"
@@ -176,31 +144,62 @@ onMounted(() => {
         </el-input>
       </div>
 
-      <div class="flex flex-wrap justify-center">
-        <el-empty v-if="__roomList.length === 0" description="啥都没有哦~" />
+      <div v-else :class="isHot ? '' : 'flex flex-wrap justify-center'">
+        <el-empty v-if="thisRoomList.length === 0" description="啥都没有哦~" />
+        <div
+          v-if="isHot"
+          v-for="(item, i) in thisRoomList"
+          :key="i"
+          class="flex max-sm:flex-wrap justify-around m-2 rounded-lg bg-zinc-50 hover:bg-white transition-all dark:bg-zinc-800 hover:dark:bg-neutral-800 w-auto items-center"
+        >
+          <div class="m-auto sm:ml-5 max-sm:mt-5">
+            <b> {{ i + 1 }}</b>
+          </div>
+          <div class="overflow-hidden text-ellipsis p-2 w-full">
+            <b class="block text-base font-semibold truncate"> {{ item["roomName"] }}</b>
+          </div>
+          <div class="overflow-hidden text-ellipsis p-2 text-sm w-full">
+            在线人数：<span :class="item.peopleNum > 0 ? 'text-green-500' : 'text-red-500'">{{
+              item["peopleNum"]
+            }}</span>
+
+            <div>创建者：{{ item.creator }}</div>
+          </div>
+          <div class="flex p-2 w-full justify-between items-center">
+            <el-tag disabled :type="item.needPassword ? 'danger' : 'success'">
+              {{ item.needPassword ? "有密码" : "无密码" }}
+            </el-tag>
+            <button class="btn btn-dense md:ml-2" @click="joinThisRoom(item)">
+              加入房间
+              <PlayIcon class="inline-block" width="18px" />
+            </button>
+          </div>
+        </div>
+
         <div
           v-else
-          v-for="item in __roomList"
+          v-for="item in thisRoomList"
           :key="item.roomId"
           class="flex flex-wrap m-2 rounded-lg bg-stone-50 hover:bg-white transition-all dark:bg-zinc-800 hover:dark:bg-neutral-800 max-w-[225px]"
         >
           <div class="overflow-hidden text-ellipsis m-auto p-2 w-full">
             <b class="block text-base font-semibold truncate"> {{ item["roomName"] }}</b>
           </div>
-          <div class="overflow-hidden text-ellipsis text-sm p-2">
+          <div class="overflow-hidden text-ellipsis text-sm m-auto">
             <div>
               在线人数：<span :class="item.peopleNum > 0 ? 'text-green-500' : 'text-red-500'">{{
                 item["peopleNum"]
               }}</span>
             </div>
-            <div v-if="!isMyRoom" class="truncate">创建者：{{ item.creator }}</div>
+            <div v-if="isMyRoom">状态：{{ getObjValue(roomStatus, item.status) }}</div>
+            <div v-else class="truncate">创建者：{{ item.creator }}</div>
             <div>创建时间：{{ useTimeAgo(new Date(item.createdAt)).value }}</div>
           </div>
-          <div class="flex p-2 w-full justify-between items-center">
-            <el-tag v-if="!isMyRoom" disabled :type="item.needPassword ? 'danger' : 'success'">
+          <div class="flex mt-2 my-3 w-full justify-around items-center">
+            <el-tag disabled :type="item.needPassword ? 'danger' : 'success'">
               {{ item.needPassword ? "有密码" : "无密码" }}
             </el-tag>
-            <button class="btn btn-dense" @click="openJoinRoomDialog(item)">
+            <button class="btn btn-dense" @click="joinThisRoom(item)">
               加入房间
               <PlayIcon class="inline-block" width="18px" />
             </button>
@@ -212,7 +211,7 @@ onMounted(() => {
     <div class="card-footer justify-between flex-wrap overflow-hidden">
       <button class="btn btn-success max-sm:mb-4" @click="getRoomList(true)">更新列表</button>
       <el-pagination
-        v-if="__roomList.length != 0"
+        v-if="thisRoomList.length != 0"
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
         :pager-count="5"

@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { roomStore } from "@/stores/room";
 import Artplayer from "artplayer";
 import type { Option } from "artplayer/types/option";
 import { onMounted, onBeforeUnmount, ref, watch, computed } from "vue";
 import type { PropType, WatchStopHandle } from "vue";
-import { deepEqualObject } from "@/utils/utils";
-const room = roomStore();
+import { newSubtitle } from "@/plugins/subtitle";
 
 const watchers: WatchStopHandle[] = [];
 
@@ -15,16 +13,15 @@ onBeforeUnmount(() => {
 
 Artplayer.DBCLICK_FULLSCREEN = false;
 
-const artplayer = ref<HTMLDivElement>();
-
 let art: Artplayer;
 
-interface options {
+export interface options {
   url: string;
   isLive: boolean;
   type?: string;
   headers: { [key: string]: string };
   plugins: ((art: Artplayer) => unknown)[];
+  subtitles?: { [key: string]: { type: string; url: string } };
 }
 
 const Props = defineProps({
@@ -35,17 +32,6 @@ const Props = defineProps({
 });
 
 const Emits = defineEmits(["get-instance"]);
-
-// 监听弹幕变化
-watchers.push(
-  watch(
-    () => room.danmuku,
-    () => {
-      if (!art || !art.plugins.artplayerPluginDanmuku) return;
-      art.plugins.artplayerPluginDanmuku.emit(room.danmuku);
-    }
-  )
-);
 
 const playMpd = (player: HTMLMediaElement, url: string, art: any) => {
   import("@/utils/dash").then((dash) => {
@@ -160,9 +146,11 @@ const playM3u8 = (player: HTMLMediaElement, url: string, art: any) => {
   });
 };
 
-const playerOption = computed<Option>(() => {
-  return {
-    container: artplayer.value!,
+const newPlayerOption = (html: HTMLDivElement): Option => {
+  const opts: Option = {
+    url: Props.options.url,
+    isLive: Props.options.isLive,
+    container: html,
     volume: 0, // 音量
     autoSize: false, // 隐藏黑边
     autoMini: false,
@@ -178,7 +166,7 @@ const playerOption = computed<Option>(() => {
     mutex: true, // 互斥，阻止多个播放器同时播放
     fullscreen: true, // 全屏按钮
     fullscreenWeb: true, // 网页全屏
-    subtitleOffset: false, // 显示字幕偏移功能
+    subtitleOffset: true, // 显示字幕偏移功能
     miniProgressBar: true, // 迷你进度条,播放器失去焦点后且正在播放时出现
     playsInline: true, // 在移动端是否使用 playsInline 模式
     lock: true, // 移动端显示锁定按钮
@@ -186,8 +174,8 @@ const playerOption = computed<Option>(() => {
     autoPlayback: false, // 使用自动回放功能
     autoOrientation: true, // 移动端的网页全屏时，根据视频尺寸和视口尺寸，旋转播放器
     airplay: false, // 隔空播放
-    ...Props.options,
     type: Props.options.type,
+    plugins: Props.options.plugins,
     customType: {
       flv: playFlv,
       m3u8: playM3u8,
@@ -199,45 +187,40 @@ const playerOption = computed<Option>(() => {
       mts: playM2ts
     }
   };
-});
-
-console.log(Props.options);
+  if (Props.options.subtitles) {
+    opts.subtitle = {
+      type: Props.options.subtitles[Object.keys(Props.options.subtitles)[0]].type,
+      encoding: "utf-8",
+      escape: true
+    };
+    opts.plugins!.push(newSubtitle(Props.options.subtitles));
+  }
+  return opts;
+};
 
 const father = ref<HTMLDivElement>();
 
-onMounted(() => {
-  art = new Artplayer(playerOption.value);
-
+const mountPlayer = () => {
+  const newDiv = document.createElement("div");
+  newDiv.setAttribute("class", "artplayer-app");
+  while (father.value!.firstChild) {
+    father.value!.removeChild(father.value!.firstChild);
+  }
+  father.value!.appendChild(newDiv);
+  art = new Artplayer(newPlayerOption(newDiv));
   Emits("get-instance", art);
-  const needDestroy = (oldOption: options, newOption: options) => {
-    return (
-      oldOption.isLive !== newOption.isLive ||
-      oldOption.type !== newOption.type ||
-      oldOption.url !== newOption.url ||
-      !deepEqualObject(oldOption.headers, newOption.headers)
-    );
-  };
+};
+
+onMounted(() => {
+  mountPlayer();
 
   watchers.push(
     watch(
       () => Props.options,
-      (old, current) => {
-        if (needDestroy(old, current)) {
-          console.log("destroy");
-          art.destroy();
-          const newDiv = document.createElement("div");
-          newDiv.setAttribute("class", "artplayer-app");
-          newDiv.setAttribute("ref", "artplayer");
-          while (father.value!.firstChild) {
-            father.value!.removeChild(father.value!.firstChild);
-          }
-          father.value!.appendChild(newDiv);
-          artplayer.value = newDiv;
-          art = new Artplayer(playerOption.value);
-          Emits("get-instance", art);
-        } else {
-          //
-        }
+      () => {
+        console.log("destroy");
+        if (art) art.destroy();
+        mountPlayer();
       }
     )
   );
@@ -249,9 +232,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="father">
-    <div class="artplayer-app" ref="artplayer"></div>
-  </div>
+  <div ref="father"></div>
 </template>
 
 <style></style>

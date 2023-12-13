@@ -3,7 +3,7 @@ import { onMounted, ref } from "vue";
 import { ElNotification, ElMessage } from "element-plus";
 import { oAuth2Platforms, bindOAuth2Api, unbindOAuth2Api } from "@/services/apis/user";
 import { userStore } from "@/stores/user";
-import { getAppIcon } from "@/utils/utils";
+import { getAppIcon } from "@/utils";
 import { useTimeAgo } from "@vueuse/core";
 
 const { token } = userStore();
@@ -110,7 +110,7 @@ onMounted(async () => {
 <template>
   <div class="card mb-5">
     <div class="card-title">第三方账号绑定</div>
-    <div class="card-body">
+    <div class="card-body pb-4">
       <p class="-mt-2 mb-2">
         使用以下任一方式都可以登录到您的 SyncTV 帐号，避免由于某个帐号失效导致无法登录
       </p>
@@ -143,7 +143,7 @@ onMounted(async () => {
   <div class="card" v-if="unbind.length > 0">
     <div class="card-title">你还可以<span class="text-red-500">绑定</span>以下账号</div>
     <div
-      class="card-body grid gap-5 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+      class="card-body pb-4 grid gap-5 grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
     >
       <div
         class="app-list-item"

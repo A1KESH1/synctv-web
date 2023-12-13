@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { ElNotification, ElMessage } from "element-plus";
-import type { BaseMovieInfo, BilibiliVendorInfo, VendorInfo } from "@/types/Movie";
+import type { BaseMovieInfo } from "@/types/Movie";
 import { parseBiliBiliVideo } from "@/services/apis/vendor";
 import { pushMoviesApi } from "@/services/apis/movie";
 import { userStore } from "@/stores/user";
@@ -80,7 +80,7 @@ const selectItem = (item: BilibiliVideo) => {
 };
 
 const findItem = (item: BilibiliVideo) => {
-  return selectedItems.value.find((i) => i.name === item.name);
+  return selectedItems.value.find((i) => i.cid === item.cid);
 };
 
 const removeItem = (item: BilibiliVideo) => {
@@ -113,6 +113,11 @@ const allShared = () => {
   }
 };
 
+const cancel = () => {
+  selectedItems.value = [];
+  open.value = false;
+};
+
 const { execute: reqPushMoviesApi } = pushMoviesApi();
 const submit = async () => {
   try {
@@ -130,9 +135,9 @@ const submit = async () => {
               bilibili: {
                 bvid: item.bvid,
                 cid: item.cid,
-                epid: item.epid,
-                vendorName: Props.vendor
-              }
+                epid: item.epid
+              },
+              backend: Props.vendor
             }
           }
       )
@@ -164,9 +169,10 @@ defineExpose({
     destroy-on-close
     :title="`解析结果 (共 ${biliVideos.length} 个视频)`"
     class="rounded-lg dark:bg-zinc-800 w-full xl:w-7/12 lg:w-3/7 md:w-8/12 sm:w-full"
+    @closed="cancel"
   >
     <h1 class="-mt-8 text-xl font-medium">{{ state?.title }}</h1>
-    <p class="mt-2">UP / 主演 ：{{ state?.actors }}</p>
+    <p class="mt-2">UP 主 / 主演 ：{{ state?.actors }}</p>
     <p>
       <b>说明：</b>
       当share或proxy勾选时，将会共享创建者的bilibili账号
@@ -188,6 +194,8 @@ defineExpose({
         <a href="javascript:;" class="mr-3" v-if="!biliVideos[0].epid" @click="allShared"
           >所有视频 开启/关闭 shared</a
         >
+        <br />
+        <span v-if="selectedItems.length > 0">当前已选择：{{ selectedItems.length }} 个视频</span>
       </p>
       <el-pagination
         v-if="biliVideos.length != 0"
@@ -207,7 +215,10 @@ defineExpose({
         :md="biliVideos.length === 1 ? 24 : 12"
       >
         <div class="flex my-2">
-          <img :src="item.coverImage" class="w-4/12 mr-3 object-cover rounded-sm" />
+          <img
+            :src="item.coverImage"
+            class="w-4/12 mr-3 object-cover rounded-md shadow-md shadow-gray-400"
+          />
           <ul class="">
             <li>{{ item.name }}</li>
             <li v-if="item.bvid">BVID: {{ item.bvid }}</li>
@@ -249,7 +260,7 @@ defineExpose({
           class="flex-wrap"
         />
         <div>
-          <button class="btn mr-4" @click="open = false">取消</button>
+          <button class="btn mr-4" @click="cancel">取消</button>
           <button v-if="selectedItems.length > 0" class="btn btn-success" @click="submit()">
             添加到列表
           </button>

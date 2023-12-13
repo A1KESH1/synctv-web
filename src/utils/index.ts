@@ -18,25 +18,6 @@ export const debounces = (delay: number): Function => {
   return add;
 };
 
-export const deepEqualObject = (obj1: any, obj2: any) => {
-  if (obj1 === obj2) {
-    return true;
-  } else if (
-    typeof obj1 === "object" &&
-    typeof obj2 === "object" &&
-    Object.keys(obj1).length === Object.keys(obj2).length
-  ) {
-    for (const key in obj1) {
-      if (!deepEqualObject(obj1[key], obj2[key])) {
-        return false;
-      }
-    }
-    return true;
-  } else {
-    return false;
-  }
-};
-
 export const strLengthLimit = (str: any, num: number) => {
   if (typeof str !== "string") return;
   if (str.length > num)
@@ -75,8 +56,9 @@ export const decodeJWT = (jwt: string) => {
 
 export const getAppIcon = (appName: string): string => {
   const href = new URL(`/src/assets/appIcons/${appName}.svg`, import.meta.url).href;
-  if (href.endsWith("undefined")) {
-    return getAppIcon("default");
-  }
-  return href;
+  return href.endsWith("undefined") ? getAppIcon("default") : href;
+};
+
+export const getObjValue = <T extends object, K extends keyof T>(obj: T, key: K) => {
+  return obj[key];
 };

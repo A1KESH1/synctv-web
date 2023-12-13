@@ -4,16 +4,11 @@ import { RouterLink } from "vue-router";
 import { userStore } from "@/stores/user";
 import DarkModeSwitcher from "@/components/DarkModeSwitcher.vue";
 import router from "@/router";
+import SyncTVLogo from "@/assets/appIcons/synctv-nobg.svg";
+import { ROLE } from "@/types/User";
 const mobileMenu = ref(false);
 
 const { isLogin, info } = userStore();
-
-const limitedUsername = computed(() => {
-  if (info.value?.username && info.value?.username.length > 7) {
-    return info.value?.username.substring(0, 7) + "..."; // 超出长度截断
-  }
-  return info.value?.username || ""; // 不需要截断直接返回
-});
 
 const menuLinks = computed(() => {
   const basicLinks = [
@@ -48,6 +43,12 @@ const menuLinks = computed(() => {
         to: "/createRoom"
       }
     ];
+    if (info.value?.role! >= ROLE.Admin) {
+      loginLinks.push({
+        name: "管理后台",
+        to: "/admin"
+      });
+    }
     links = loginLinks;
   }
 
@@ -62,20 +63,18 @@ const toUserInfo = () => {
   <header class="bg-gray-50 h-16 dark:bg-zinc-900 dark:text-zinc-100">
     <nav class="flex mx-auto max-w-7xl items-center justify-between lg:px-8 p-4 lg:p-5 px-6">
       <div class="flex lg:flex-1">
+        <img class="mr-2 w-6 h-6 bg-slate-500 rounded-md" :src="SyncTVLogo" />
         <span class="-m-1.5 p-1.5 font-bold"> SyncTV </span>
       </div>
 
-      <div class="flex lg:hidden items-center">
-        <span class="p-2">
+      <div class="flex lg:hidden items-center gap-4">
+        <span class="py-2">
           <DarkModeSwitcher />
         </span>
 
-        <span>
-          <PersonIcon v-if="isLogin" class="cursor-pointer" @click="toUserInfo" />
-        </span>
-
-        <span @click="toUserInfo" class="cursor-pointer" v-if="isLogin">
-          {{ limitedUsername }}
+        <span class="cursor-pointer flex items-center">
+          <PersonIcon v-if="isLogin" @click="toUserInfo" />
+          <span class="ml-1 max-w-[100px] truncate overflow-hidden">{{ info?.username }}</span>
         </span>
 
         <button
@@ -106,12 +105,12 @@ const toUserInfo = () => {
           link.name
         }}</RouterLink>
       </div>
-      <div class="hidden lg:flex lg:flex-1 lg:justify-end">
+      <div class="hidden lg:flex lg:flex-1 lg:justify-end items-center gap-4">
         <DarkModeSwitcher />
-        <PersonIcon class="ml-4 cursor-pointer" @click="toUserInfo" />
-      </div>
-      <div class="hidden lg:flex lg:justify-end cursor-pointer" @click="toUserInfo" v-if="isLogin">
-        {{ limitedUsername }}
+        <div class="flex cursor-pointer items-center" @click="toUserInfo">
+          <PersonIcon />
+          <span class="max-w-[100px] ml-1 truncate overflow-hidden">{{ info?.username }}</span>
+        </div>
       </div>
     </nav>
 
@@ -144,7 +143,7 @@ const toUserInfo = () => {
         </div>
         <div class="mt-6 flow-root">
           <div class="-my-6 divide-y divide-gray-500/10">
-            <div class="space-y-2 py-6 moblie-menu">
+            <div class="space-y-2 py-6 mobile-menu">
               <RouterLink
                 v-for="(link, index) in menuLinks"
                 :key="index"
@@ -177,7 +176,7 @@ header {
     }
   }
 
-  .moblie-menu {
+  .mobile-menu {
     a {
       @apply -mx-3 block rounded-lg px-3 py-2 text-base font-normal leading-7 text-gray-900 dark:text-zinc-200;
 

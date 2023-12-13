@@ -2,7 +2,7 @@ import { useDefineApi } from "@/stores/useDefineApi";
 import type { EditMovieInfo } from "@/types/Movie";
 import type { Status } from "@/proto/message";
 import type { BaseMovieInfo, MovieInfo } from "@/types/Movie";
-// 获取影片列表
+// 获取影片列表，包括正在播放
 export const movieListApi = useDefineApi<
   {
     params: {
@@ -24,7 +24,7 @@ export const movieListApi = useDefineApi<
   method: "GET"
 });
 
-// 获取影片列表
+// 获取影片列表（无正在播放）
 export const moviesApi = useDefineApi<
   {
     params: {
@@ -42,7 +42,7 @@ export const moviesApi = useDefineApi<
   method: "GET"
 });
 
-// 获取影片列表
+// 获取正在播放的影片
 export const currentMovieApi = useDefineApi<
   {
     headers: { Authorization: string };
@@ -175,9 +175,8 @@ export const liveInfoApi = useDefineApi<
     headers: { Authorization: string };
   },
   {
-    host: string;
-    port: number;
     app: string;
+    host: string;
     token: string;
   }
 >({
