@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, shallowRef, type Component, onMounted } from "vue";
-import { userStore } from "@/stores/user";
-import { ElNotification } from "element-plus";
-import { roomStore } from "@/stores/room";
 import { useScreen } from "@/hooks/useScreen";
 import type { settingGroupName } from "@/hooks/useSettings";
 
 import UserManager from "./settings/UserManager.vue";
 import RoomsManager from "./settings/RoomsManager.vue";
 import SiteSetting from "./settings/SiteSetting.vue";
+import VendorManager from "./settings/VendorManager.vue";
 
-const { info: userInfo } = userStore();
-const room = roomStore();
 const { isPhone } = useScreen();
 
 interface Tabs {
@@ -31,6 +27,11 @@ const tabs: Tabs[] = [
     name: "房间管理",
     icon: "🏡",
     component: RoomsManager
+  },
+  {
+    name: "视频解析管理",
+    icon: "🎞️",
+    component: VendorManager
   },
   {
     name: "房间设置",
@@ -67,6 +68,18 @@ const tabs: Tabs[] = [
     icon: "🪬",
     component: SiteSetting,
     showType: "oauth2"
+  },
+  {
+    name: "邮箱设置",
+    icon: "📧",
+    component: SiteSetting,
+    showType: "email"
+  },
+  {
+    name: "系统设置",
+    icon: "🛢️",
+    component: SiteSetting,
+    showType: "server"
   },
   {
     name: "所有设置",
@@ -106,7 +119,7 @@ onMounted(() => {
 <template>
   <div class="menu-toggle" @click="menuToggle"></div>
   <div class="container mx-auto flex gap-5">
-    <transition name="slide-to-left">
+    <Transition name="slide-to-left">
       <div class="w-96 relative menu-drawer" v-show="menu">
         <div class="card" style="height: 85vh; overflow-y: auto">
           <div class="card-body py-5">
@@ -123,7 +136,7 @@ onMounted(() => {
           </div>
         </div>
       </div>
-    </transition>
+    </Transition>
 
     <div class="w-full right-content">
       <component

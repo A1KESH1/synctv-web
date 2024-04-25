@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { ElNotification, ElMessage } from "element-plus";
+import { indexStore } from "@/stores";
 import { OAuth2Platforms, loginWithOAuth2, LoginApi } from "@/services/apis/auth";
 import { userInfo } from "@/services/apis/user";
 import { useRouteQuery } from "@vueuse/router";
@@ -55,6 +56,8 @@ const platforms: { [key: string]: { name: string; class: string } } = {
   }
 };
 
+const { settings } = indexStore();
+
 const formData = ref({
   username: localStorage.getItem("uname") || "",
   password: localStorage.getItem("password") || ""
@@ -67,14 +70,9 @@ console.log("redirect: ", (redirect.value as string) ?? "");
 const { getUserInfo: updateUserInfo, updateToken } = userStore();
 const { execute: reqLoginApi, state: loginData } = LoginApi();
 const login = async () => {
-  if (formData.value?.username === "" || formData.value?.password === "") {
-    ElNotification({
-      title: "错误",
-      message: "请填写表单完整",
-      type: "error"
-    });
-    return;
-  }
+  if (!formData.value?.username || !formData.value?.password)
+    return ElMessage.error("请填写表单完整");
+
   try {
     for (const key in formData.value) {
       strLengthLimit(key, 32);
@@ -181,11 +179,27 @@ onMounted(async () => {
       <div>
         <input class="w-auto" type="checkbox" v-model="savePwd" />
         <label title="明文保存到本机哦~">&nbsp;记住密码</label>
+
+        <a
+          v-if="settings?.emailEnable"
+          class="ml-4"
+          href="javascript:;"
+          @click="router.push('/auth/reset')"
+          >重置密码</a
+        >
       </div>
       <button class="btn m-[10px]" @click="login">登录</button>
+      <div v-if="settings?.emailEnable">
+        还没有账号？<a class="ml-2" href="javascript:;" @click="router.push('/auth/register')"
+          >立即注册</a
+        >
+      </div>
     </form>
     <br />
-    <div v-if="OAuth2Platforms_?.enabled" class="sm:w-96 w-full m-auto">
+    <div
+      v-if="OAuth2Platforms_?.enabled && OAuth2Platforms_.enabled.length > 0"
+      class="sm:w-96 w-full m-auto"
+    >
       <h4 class="text-[18px] font-bold">使用第三方平台登录</h4>
       <button
         v-for="item in OAuth2Platforms_?.enabled"

@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { RouterLink } from "vue-router";
+import { RouterLink, useRoute } from "vue-router";
 import { userStore } from "@/stores/user";
+import { indexStore } from "@/stores";
 import DarkModeSwitcher from "@/components/DarkModeSwitcher.vue";
 import router from "@/router";
 import SyncTVLogo from "@/assets/appIcons/synctv-nobg.svg";
 import { ROLE } from "@/types/User";
-const mobileMenu = ref(false);
 
+const mobileMenu = ref(false);
+const route = useRoute();
+const { settings } = indexStore();
 const { isLogin, info } = userStore();
 
 const menuLinks = computed(() => {
@@ -32,17 +35,43 @@ const menuLinks = computed(() => {
     }
   ];
 
+  if (settings?.emailEnable && !settings.emailDisableUserSignup)
+    links.push({
+      name: "注册",
+      to: "/auth/register"
+    });
+
+  if (!isLogin.value && settings?.guestEnable) {
+    basicLinks.push({
+      name: "加入房间",
+      to: "/joinRoom"
+    });
+
+    route.path.startsWith("/cinema") &&
+      basicLinks.push({
+        name: "影厅",
+        to: "/cinema/" + route.params.roomId
+      });
+  }
+
   if (isLogin.value) {
-    const loginLinks = [
-      {
-        name: "加入房间",
-        to: "/joinRoom"
-      },
-      {
-        name: "创建房间",
-        to: "/createRoom"
-      }
-    ];
+    const loginLinks = route.path.startsWith("/cinema")
+      ? [
+          {
+            name: "影厅",
+            to: "/cinema/" + route.params.roomId
+          }
+        ]
+      : [
+          {
+            name: "加入房间",
+            to: "/joinRoom"
+          },
+          {
+            name: "创建房间",
+            to: "/createRoom"
+          }
+        ];
     if (info.value?.role! >= ROLE.Admin) {
       loginLinks.push({
         name: "管理后台",

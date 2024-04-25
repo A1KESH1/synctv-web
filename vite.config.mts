@@ -14,11 +14,13 @@ export default defineConfig({
     host: true,
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8088",
+        target: env.VITE_SERVER_TARGET || "http://127.0.0.1:8088",
+        changeOrigin: true,
         ws: true
       },
       "/oauth2": {
-        target: "http://127.0.0.1:8088",
+        target: env.VITE_SERVER_TARGET || "http://127.0.0.1:8088",
+        changeOrigin: true,
         ws: false
       }
     }
@@ -39,18 +41,13 @@ export default defineConfig({
   },
   build: {
     cssCodeSplit: true,
-    minify: "terser",
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true
-      },
-      mangle: true,
-      toplevel: true
-    },
+    minify: "esbuild",
     cssMinify: "lightningcss",
     reportCompressedSize: false,
     assetsInlineLimit: 0 // 禁止内敛为base64
+  },
+  esbuild: {
+    drop: ["console", "debugger"]
   },
   base: env.VITE_BASEURL,
   css: {

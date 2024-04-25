@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { ElNotification, ElMessage } from "element-plus";
-import { oAuth2Platforms, bindOAuth2Api, unbindOAuth2Api } from "@/services/apis/user";
+import {
+  oAuth2Platforms,
+  bindOAuth2Api,
+  unbindOAuth2Api,
+  unbindEmailApi
+} from "@/services/apis/user";
 import { userStore } from "@/stores/user";
 import { getAppIcon } from "@/utils";
-import { useTimeAgo } from "@vueuse/core";
+import BindEmail from "@/components/user/dialogs/email.vue";
 
-const { token } = userStore();
-
+const { token, info, getUserInfo } = userStore();
+const bindEmailDialog = ref<InstanceType<typeof BindEmail>>();
 interface ProviderType {
   name: string;
   providerUserID: string;
@@ -50,7 +55,7 @@ const getProviders = async () => {
     console.error(err);
     ElNotification({
       title: "获取失败",
-      message: err.response.data.error || err.message,
+      message: err.response?.data.error || err.message,
       type: "error"
     });
   }
@@ -74,7 +79,7 @@ const bindOAuth2 = async (platform: string) => {
     console.error(err);
     ElNotification({
       title: "错误",
-      message: err.response.data.error || err.message,
+      message: err.response?.data.error || err.message,
       type: "error"
     });
   }
@@ -82,7 +87,7 @@ const bindOAuth2 = async (platform: string) => {
 
 // 解绑 OAuth2
 const unbindOAuth2 = async (platform: string) => {
-  const { execute, state } = unbindOAuth2Api();
+  const { execute } = unbindOAuth2Api();
   try {
     await execute({
       headers: {
@@ -96,7 +101,28 @@ const unbindOAuth2 = async (platform: string) => {
     console.error(err);
     ElNotification({
       title: "错误",
-      message: err.response.data.error || err.message,
+      message: err.response?.data.error || err.message,
+      type: "error"
+    });
+  }
+};
+
+// 解绑邮箱
+const unbindEmail = async () => {
+  const { execute, state } = unbindEmailApi();
+  try {
+    await execute({
+      headers: {
+        Authorization: token.value
+      }
+    });
+    ElMessage.success("邮箱解绑成功");
+    await getUserInfo();
+  } catch (err: any) {
+    console.error(err);
+    ElNotification({
+      title: "错误",
+      message: err.response?.data.error || err.message,
       type: "error"
     });
   }
@@ -108,6 +134,27 @@ onMounted(async () => {
 </script>
 
 <template>
+  <div class="card mb-5">
+    <div class="card-title">邮箱绑定</div>
+    <div class="card-body pb-4">
+      <p class="-mt-2 mb-2">绑定邮箱后，可以使用该邮箱进行重置密码操作</p>
+      <div>
+        <h3 v-if="info?.email">
+          <b>当前绑定邮箱：</b>
+          <span class="text-green-500 mr-4">{{ info?.email }}</span>
+          <el-popconfirm title="你确定要解除绑定吗？" @confirm="unbindEmail">
+            <template #reference>
+              <a class="text-red-500" href="javascript:;">💥解除绑定</a>
+            </template>
+          </el-popconfirm>
+          <a href="javascript:;" @click="bindEmailDialog?.openDialog" style="margin-left: 10px"
+            >换绑</a
+          >
+        </h3>
+        <a v-else href="javascript:;" @click="bindEmailDialog?.openDialog">立即绑定</a>
+      </div>
+    </div>
+  </div>
   <div class="card mb-5">
     <div class="card-title">第三方账号绑定</div>
     <div class="card-body pb-4">
@@ -125,7 +172,7 @@ onMounted(async () => {
         <el-table-column prop="providerUserID" label="账号ID" />
         <el-table-column prop="createdAt" label="绑定时间">
           <template #default="scope">
-            {{ useTimeAgo(new Date(scope.row.createdAt)).value }}
+            {{ new Date(scope.row.createdAt).toLocaleString() }}
           </template>
         </el-table-column>
         <el-table-column fixed="right" label="操作">
@@ -158,4 +205,6 @@ onMounted(async () => {
       </div>
     </div>
   </div>
+
+  <BindEmail ref="bindEmailDialog" @updateUInfo="getUserInfo" />
 </template>

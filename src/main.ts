@@ -3,11 +3,13 @@ import "./assets/global.less";
 import "./assets/animation.less";
 import "element-plus/dist/index.css";
 import "element-plus/theme-chalk/dark/css-vars.css";
+import "animate.css";
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 
 import App from "./App.vue";
 import router from "./router";
+import { indexStore } from "@/stores";
 import { userStore } from "@/stores/user";
 
 import SunIcon from "./components/icons/Sun.vue";
@@ -32,6 +34,8 @@ const initApp = async () => {
   try {
     token.value && (await getUserInfo());
     app.use(createPinia());
+    const { getSiteOptions } = indexStore();
+    await getSiteOptions();
     app.use(router);
   } catch (err: any) {
     console.error(err);

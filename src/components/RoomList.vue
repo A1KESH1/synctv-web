@@ -3,6 +3,7 @@ import { onMounted, ref } from "vue";
 import { ElNotification } from "element-plus";
 import { roomStatus, type RoomList } from "@/types/Room";
 import JoinRoom from "@/views/JoinRoom.vue";
+import { indexStore } from "@/stores";
 import { userStore } from "@/stores/user";
 import { Search } from "@element-plus/icons-vue";
 import { useTimeAgo } from "@vueuse/core";
@@ -17,6 +18,7 @@ const props = defineProps<{
   userId?: string;
 }>();
 
+const { settings } = indexStore();
 const { isLogin, info } = userStore();
 const thisRoomList = ref<RoomList[]>([]);
 const formData = ref<{
@@ -45,7 +47,8 @@ const {
   getHotRoomList,
   hotRoomList,
 
-  joinRoom
+  joinRoom,
+  guestJoinRoom
 } = useRoomApi(formData.value.roomId);
 
 const getRoomList = async (showMsg = false) => {
@@ -62,8 +65,13 @@ const getRoomList = async (showMsg = false) => {
 };
 
 const JoinRoomDialog = ref(false);
+const JoinRoomC = ref<InstanceType<typeof JoinRoom>>();
+const openJoinRoomDialog = () => {
+  JoinRoomC.value?.init();
+  JoinRoomDialog.value = true;
+};
 const joinThisRoom = async (item: RoomList) => {
-  if (!isLogin.value) {
+  if (!settings?.guestEnable && !isLogin.value) {
     ElNotification({
       title: "错误",
       message: "请先登录",
@@ -79,9 +87,13 @@ const joinThisRoom = async (item: RoomList) => {
   }
   formData.value.roomId = item.roomId;
 
-  info.value?.username === item.creator || !item.needPassword
-    ? await joinRoom(formData.value)
-    : (JoinRoomDialog.value = true);
+  return isLogin.value
+    ? info.value?.username === item.creator || !item.needPassword
+      ? await joinRoom(formData.value)
+      : openJoinRoomDialog()
+    : settings?.guestEnable && !item.needPassword
+      ? await guestJoinRoom(formData.value)
+      : openJoinRoomDialog();
 };
 
 onMounted(() => {
@@ -144,7 +156,7 @@ onMounted(() => {
         </el-input>
       </div>
 
-      <div v-else :class="isHot ? '' : 'flex flex-wrap justify-center'">
+      <div :class="isHot ? '' : 'flex flex-wrap justify-center'">
         <el-empty v-if="thisRoomList.length === 0" description="啥都没有哦~" />
         <div
           v-if="isHot"
@@ -230,6 +242,6 @@ onMounted(() => {
         <span class="truncate">加入房间</span>
       </div>
     </template>
-    <JoinRoom :item="formData" />
+    <JoinRoom :item="formData" ref="joinRoomC" />
   </el-dialog>
 </template>

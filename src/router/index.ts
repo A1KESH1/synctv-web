@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { start, close } from "@/utils/nprogress";
 import { ROLE } from "@/types/User";
+
 import { userStore } from "@/stores/user";
+// import { indexStore } from "@/stores";
 
 const Base_Title = "SyncTV";
 
@@ -25,6 +27,18 @@ const router = createRouter({
       name: "login",
       component: () => import("../views/auth/Login.vue"),
       meta: { title: "登录", permission: ROLE.Visitor }
+    },
+    {
+      path: "/auth/register",
+      name: "register",
+      component: () => import("../views/auth/Register.vue"),
+      meta: { title: "注册", permission: ROLE.Visitor }
+    },
+    {
+      path: "/auth/reset",
+      name: "reset",
+      component: () => import("../views/auth/Reset.vue"),
+      meta: { title: "重置密码", permission: ROLE.Visitor }
     },
     {
       path: "/createRoom",
@@ -88,8 +102,10 @@ const router = createRouter({
   }
 });
 
-router.beforeEach((to: any, from: any, next) => {
+router.beforeEach(async (to: any, from: any, next) => {
   start();
+  const { indexStore } = await import("@/stores");
+  const { settings } = indexStore();
   const { info } = userStore();
   const permission = info.value?.role ?? -1;
   if (to.meta.permission <= permission) {
@@ -97,12 +113,19 @@ router.beforeEach((to: any, from: any, next) => {
     next();
   } else {
     if (permission === ROLE.Visitor) {
-      router.replace({
-        name: "login",
-        query: {
-          redirect: to.fullPath
-        }
-      });
+      if (
+        (settings?.guestEnable && to.path.startsWith("/cinema")) ||
+        to.path.startsWith("/joinRoom")
+      ) {
+        next();
+      } else {
+        router.replace({
+          name: "login",
+          query: {
+            redirect: to.fullPath
+          }
+        });
+      }
     } else {
       next("/403");
     }

@@ -16,7 +16,6 @@ import CopyButton from "@/components/CopyButton.vue";
 import userRooms from "@/components/admin/dialogs/userRooms.vue";
 import newUser from "@/components/admin/dialogs/newUser.vue";
 import { ROLE, role } from "@/types/User";
-import { useTimeAgo } from "@vueuse/core";
 
 const props = defineProps<{
   title: string;
@@ -244,7 +243,7 @@ onMounted(async () => {
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="role" label="权限组" width="120">
+        <el-table-column prop="role" label="权限组" width="70">
           <template #default="scope">
             {{ getRole(scope.row.role) }}
           </template>
@@ -254,9 +253,9 @@ onMounted(async () => {
             <el-button type="primary" plain @click="getUserRoom(scope.row.id)"> 查看 </el-button>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="注册时间" width="200">
+        <el-table-column prop="createdAt" label="注册时间" width="160">
           <template #default="scope">
-            {{ useTimeAgo(new Date(scope.row.createdAt)).value }}
+            {{ new Date(scope.row.createdAt).toLocaleString() }}
           </template>
         </el-table-column>
         <el-table-column fixed="right" label="操作">

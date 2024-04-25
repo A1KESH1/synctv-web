@@ -7,9 +7,19 @@ export interface settingType {
   comment?: string;
   name?: string;
   disabled?: boolean;
+  isTextarea?: boolean;
 }
 
-export type settingGroupName = "all" | "database" | "room" | "proxy" | "rtmp" | "user" | "oauth2";
+export type settingGroupName =
+  | "all"
+  | "database"
+  | "room"
+  | "proxy"
+  | "rtmp"
+  | "user"
+  | "oauth2"
+  | "email"
+  | "server";
 
 export interface settingGroup {
   name?: string;
@@ -36,6 +46,7 @@ export const useSettings = () => {
     ["create_room_need_review", { value: false, name: "创建房间需要审核" }],
     ["disable_create_room", { value: false, name: "禁止创建房间" }],
     ["room_must_need_pwd", { value: false, name: "创建房间必须填写密码" }],
+    ["room_must_no_need_pwd", { value: false, name: "创建房间不能填写密码" }],
     [
       "room_ttl",
       {
@@ -70,9 +81,56 @@ export const useSettings = () => {
   ]);
 
   const defaultUserSettings: Map<string, settingType> = new Map([
+    ["enable_guest", { value: false, name: "允许访客用户" }],
     ["disable_user_signup", { value: false, name: "禁止用户注册" }],
     ["signup_need_review", { value: false, name: "注册需要审核" }],
     ["user_max_room_count", { value: 0, append: "个", name: "用户最大创建房间数" }]
+  ]);
+
+  const defaultEmailSettings: Map<string, settingType> = new Map([
+    ["enable_email", { value: false, name: "是否启用" }],
+    ["email_disable_user_signup", { value: false, name: "禁止用户使用邮箱注册" }],
+    ["email_signup_need_review", { value: 0, append: "个", name: "邮箱注册需要审核" }],
+    ["email_retrieve_password_url_path", { value: "", name: "重置密码URL" }],
+    ["email_signup_white_list_enable", { value: false, name: "邮箱域名白名单" }],
+    ["email_signup_white_list", { value: "", name: "允许的邮箱域名", isTextarea: true }],
+    ["smtp_host", { value: "", name: "SMTP 服务器地址" }],
+    ["smtp_port", { value: "", name: "SMTP 端口" }],
+    ["smtp_protocol", { value: "", name: "SMTP 加密方式" }],
+    ["smtp_username", { value: "", name: "SMTP 账号" }],
+    ["smtp_password", { value: "", name: "SMTP 密码" }],
+    ["smtp_from", { value: "", name: "SMTP 发件地址" }],
+    ["smtp_pool_size", { value: "", name: "SMTP 连接池大小" }]
+  ]);
+
+  const defaultCinemaSettings: Map<string, settingType> = new Map([
+    ["hidden", { value: false, name: "隐藏此房间" }],
+    ["disable_join_new_user", { value: false, name: "禁止新用户加入" }],
+    ["disable_guest", { value: false, name: "禁止访客加入" }],
+    ["join_need_review", { value: false, name: "加入需要审核" }],
+    // ["user_default_permissions", { value: 0, name: "用户默认权限" }],
+    ["can_get_movie_list", { value: false, name: "允许用户获取影片列表" }],
+    ["can_add_movie", { value: false, name: "允许用户添加影片" }],
+    ["can_edit_movie", { value: false, name: "允许用户编辑影片" }],
+    ["can_delete_movie", { value: false, name: "允许用户删除影片" }],
+    ["can_set_current_movie", { value: false, name: "允许用户切换影片" }],
+    ["can_set_current_status", { value: false, name: "是否可以上报进度" }],
+    ["can_send_chat_message", { value: false, name: "是否允许聊天 / 发送弹幕" }]
+  ]);
+
+  const defaultServerSettings: Map<string, settingType> = new Map([
+    ["host", { value: false, name: "host" }],
+    ["version", { value: false, name: "版本", disabled: true }]
+  ]);
+
+  const serverSettingsGroup: Map<settingGroupName, settingGroup> = new Map([
+    [
+      "server",
+      {
+        name: "系统设置",
+        value: defaultServerSettings
+      }
+    ]
   ]);
 
   const databaseSettingsGroup: Map<settingGroupName, settingGroup> = new Map([
@@ -205,6 +263,16 @@ export const useSettings = () => {
     ]
   ]);
 
+  const emailSettingGroup: Map<settingGroupName, settingGroup> = new Map([
+    [
+      "email",
+      {
+        name: "邮箱设置",
+        value: defaultEmailSettings
+      }
+    ]
+  ]);
+
   return {
     generateOAuth2SettingsMap,
     databaseSettingsGroup,
@@ -213,10 +281,14 @@ export const useSettings = () => {
     rtmpSettingsGroup,
     userSettingsGroup,
     OAuth2SettingGroup,
+    emailSettingGroup,
+    serverSettingsGroup,
+    defaultCinemaSettings,
     defaultDatabaseSettings,
     defaultRoomSettings,
     defaultProxySettings,
     defaultRtmpSettings,
-    defaultUserSettings
+    defaultUserSettings,
+    defaultServerSettings
   };
 };

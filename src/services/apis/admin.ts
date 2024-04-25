@@ -1,6 +1,7 @@
 import { useDefineApi } from "@/stores/useDefineApi";
 import type { RoomList } from "@/types/Room";
 import type { ROLE } from "@/types/User";
+import type { Backend } from "@/types/Vendor";
 
 // 获取房间设置
 export const roomSettings = useDefineApi<
@@ -344,4 +345,110 @@ export const assignSettingApi = useDefineApi<
   Record<string, Record<string, any>>
 >({
   method: "GET"
+});
+
+// 视频解析管理相关 Vendor后端
+// 查
+export const getVendorsListApi = useDefineApi<
+  {
+    headers: {
+      Authorization: string;
+    };
+    page: number;
+    max: number;
+  },
+  {
+    list: {
+      backend: Backend;
+      usedBy: {
+        bilibili: boolean;
+        bilibiliBackendName: string;
+        alist: boolean;
+        alistBackendName: string;
+        emby: boolean;
+        embyBackendName: string;
+      };
+      status: number;
+    }[];
+    total: number;
+  }
+>({
+  url: "/api/admin/vendors",
+  method: "GET"
+});
+
+// 增
+export const addVendorApi = useDefineApi<
+  {
+    headers: {
+      Authorization: string;
+    };
+    data: Backend;
+  },
+  null
+>({
+  url: "/api/admin/vendors/add",
+  method: "POST"
+});
+
+// 改
+export const editVendorApi = useDefineApi<
+  {
+    headers: {
+      Authorization: string;
+    };
+    data: Backend;
+  },
+  null
+>({
+  url: "/api/admin/vendors/update",
+  method: "POST"
+});
+
+// 删除
+export const deleteVendorApi = useDefineApi<
+  {
+    headers: {
+      Authorization: string;
+    };
+    data: {
+      endpoints: string[];
+    };
+  },
+  null
+>({
+  url: "/api/admin/vendors/delete",
+  method: "POST"
+});
+
+// 重连
+export const reconnectVendorApi = useDefineApi<
+  {
+    headers: {
+      Authorization: string;
+    };
+    data: {
+      endpoints: string[];
+    };
+  },
+  null
+>({
+  url: "/api/admin/vendors/reconnect",
+  method: "POST"
+});
+
+// 发送测试邮件
+export const sendTestMailApi = useDefineApi<
+  {
+    headers: {
+      Authorization: string;
+    };
+    data: {
+      email?: string;
+    };
+  },
+  {}
+>({
+  url: "/api/admin/email/test",
+  method: "POST"
 });

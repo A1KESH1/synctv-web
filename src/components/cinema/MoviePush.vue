@@ -8,19 +8,23 @@ import { getVendorBackends as biliBiliBackends } from "@/services/apis/vendor";
 import customHeaders from "@/components/cinema/dialogs/customHeaders.vue";
 import customSubtitles from "@/components/cinema/dialogs/customSubtitles.vue";
 import bilibiliParse from "@/components/cinema/dialogs/bilibiliParse.vue";
+import alist from "@/components/fileList/alist.vue";
+import emby from "@/components/fileList/emby.vue";
 
 const Emits = defineEmits(["getMovies"]);
 
 const customHeadersDialog = ref<InstanceType<typeof customHeaders>>();
 const customSubtitlesDialog = ref<InstanceType<typeof customSubtitles>>();
 const bilibiliParseDialog = ref<InstanceType<typeof bilibiliParse>>();
+const alistDialog = ref<InstanceType<typeof alist>>();
+const embyDialog = ref<InstanceType<typeof emby>>();
 
 const Props = defineProps<{
   token: string;
 }>();
 
 // 新影片信息
-let newMovieInfo = ref<BaseMovieInfo>({
+const newMovieInfo = ref<BaseMovieInfo>({
   url: "",
   name: "",
   type: "",
@@ -35,7 +39,9 @@ enum pushType {
   LIVE,
   PROXY_LIVE,
   RTMP_SOURCE,
-  BILIBILI
+  BILIBILI,
+  ALIST,
+  EMBY
 }
 
 interface movieTypeRecord {
@@ -143,6 +149,26 @@ const movieTypeRecords: Map<pushType, movieTypeRecord> = new Map([
       defaultType: "",
       allowedTypes: []
     }
+  ],
+  [
+    pushType.ALIST,
+    {
+      name: "AList",
+      comment: "解析 AList 视频",
+      showProxy: false,
+      defaultType: "",
+      allowedTypes: []
+    }
+  ],
+  [
+    pushType.EMBY,
+    {
+      name: "Emby",
+      comment: "解析 Emby 视频",
+      showProxy: false,
+      defaultType: "",
+      allowedTypes: []
+    }
   ]
 ]);
 
@@ -204,8 +230,37 @@ const selectPushType = () => {
         headers: {},
         vendorInfo: {
           vendor: "bilibili",
-          shared: true,
-          bilibili: {}
+          bilibili: {
+            shared: false
+          }
+        }
+      };
+      break;
+    case pushType.ALIST:
+      newMovieInfo.value = {
+        url: newMovieInfo.value.url,
+        name: newMovieInfo.value.name,
+        type: movieTypeRecords.get(selectedMovieType.value)?.defaultType || "",
+        proxy: true,
+        live: false,
+        rtmpSource: false,
+        headers: {},
+        vendorInfo: {
+          vendor: "alist"
+        }
+      };
+      break;
+    case pushType.EMBY:
+      newMovieInfo.value = {
+        url: newMovieInfo.value.url,
+        name: newMovieInfo.value.name,
+        type: movieTypeRecords.get(selectedMovieType.value)?.defaultType || "",
+        proxy: true,
+        live: false,
+        rtmpSource: false,
+        headers: {},
+        vendorInfo: {
+          vendor: "emby"
         }
       };
       break;
@@ -303,7 +358,9 @@ const getBiliBiliVendors = async () => {
       url: `/api/vendor/backends/bilibili`
     });
     getBiliBiliVendorsLoading.value = false;
-    if (biliVendors.value) {
+    if (!biliVendors.value) {
+      biliVendors.value = [""];
+    } else if (biliVendors.value.indexOf("") === -1) {
       biliVendors.value.push("");
     }
   } catch (err: any) {
@@ -331,24 +388,54 @@ const getBiliBiliVendors = async () => {
       </select>
     </div>
     <div class="card-body flex justify-around flex-wrap">
-      <Transition name="fade">
+      <div
+        class="w-full"
+        v-if="
+          selectedMovieType === pushType.MOVIE ||
+          selectedMovieType === pushType.LIVE ||
+          selectedMovieType === pushType.PROXY_LIVE
+        "
+      >
         <input
           type="text"
-          :placeholder="selectedMovieType === pushType.BILIBILI ? '视频Url或bv号' : '影片Url'"
+          placeholder="影片名称"
+          class="l-input-slate mb-2 w-full"
+          v-model="newMovieInfo.name"
+        />
+        <input
+          type="text"
+          placeholder="影片Url"
           class="l-input-violet w-full"
           v-if="!(newMovieInfo.live && newMovieInfo.rtmpSource)"
           v-model="newMovieInfo.url"
         />
-      </Transition>
-      <Transition name="fade">
+      </div>
+      <div class="w-full" v-if="selectedMovieType === pushType.RTMP_SOURCE">
         <input
           type="text"
           placeholder="影片名称"
-          class="l-input-slate mt-2 w-full"
-          v-if="selectedMovieType !== pushType.BILIBILI"
+          class="l-input-slate w-full"
           v-model="newMovieInfo.name"
         />
-      </Transition>
+      </div>
+      <div class="w-full" v-if="selectedMovieType === pushType.BILIBILI">
+        <input
+          type="text"
+          placeholder="视频Url或bv号"
+          class="l-input-violet w-full"
+          v-model="newMovieInfo.url"
+        />
+      </div>
+      <div class="w-full" v-if="selectedMovieType === pushType.ALIST">
+        <div class="more-option-list cursor-pointer" @click="alistDialog?.openDialog()">
+          <span class="text-sm min-w-fit"> 从 AList 中选择 </span>
+        </div>
+      </div>
+      <div class="w-full" v-if="selectedMovieType === pushType.EMBY">
+        <div class="more-option-list cursor-pointer" @click="embyDialog?.openDialog()">
+          <span class="text-sm min-w-fit"> 从 Emby 中选择 </span>
+        </div>
+      </div>
     </div>
     <div class="mx-5" v-if="!newMovieInfo.vendorInfo?.vendor">
       <el-collapse @change="" class="bg-transparent" style="background: #aaa0 !important">
@@ -419,7 +506,9 @@ const getBiliBiliVendors = async () => {
         <button class="btn btn-warning" @click="biliParse()">解析</button>
       </div>
 
-      <button v-else class="btn" @click="pushMovie()">添加到列表</button>
+      <button v-else-if="selectedMovieType < pushType.BILIBILI" class="btn" @click="pushMovie()">
+        添加到列表
+      </button>
     </div>
   </div>
 
@@ -444,6 +533,12 @@ const getBiliBiliVendors = async () => {
     :token="token"
     :vendor="biliVendor"
   />
+
+  <!-- AList 文件列表 -->
+  <alist ref="alistDialog" :room-token="token" />
+
+  <!-- Emby 文件列表 -->
+  <emby ref="embyDialog" :room-token="token" />
 </template>
 
 <style lang="less" scoped>

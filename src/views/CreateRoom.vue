@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { ElNotification, ElMessage } from "element-plus";
+import { ElNotification } from "element-plus";
 import router from "@/router/index";
 import { createRoomApi } from "@/services/apis/room";
 import { strLengthLimit } from "@/utils";
@@ -11,7 +11,7 @@ const { state: createRoomInfo, execute: reqCreateRoomApi } = createRoomApi();
 const formData = ref({
   roomName: "",
   password: "",
-  setting: {
+  settings: {
     hidden: false
   }
 });
@@ -44,7 +44,8 @@ const operateRoom = async () => {
         type: "error"
       });
     localStorage.setItem(`room-${createRoomInfo.value.roomId}-token`, createRoomInfo.value?.token);
-
+    if (formData.value.password)
+      localStorage.setItem(`room-${createRoomInfo.value.roomId}-pwd`, formData.value.password);
     ElNotification({
       title: "创建成功",
       type: "success"
@@ -71,12 +72,19 @@ const operateRoom = async () => {
         v-model="formData.roomName"
         placeholder="房间名"
         required
+        autocomplete="off"
       />
       <br />
-      <input class="l-input" type="password" v-model="formData.password" placeholder="房间密码" />
+      <input
+        class="l-input"
+        type="password"
+        v-model="formData.password"
+        placeholder="房间密码"
+        autocomplete="new-password"
+      />
       <br />
       <div>
-        <input class="w-auto" type="checkbox" v-model="formData.setting.hidden" />
+        <input class="w-auto" type="checkbox" v-model="formData.settings.hidden" />
         <label title="不显示在房间列表">&nbsp;是否隐藏此房间</label>
       </div>
       <button class="btn m-[10px]" @click="operateRoom()">创建房间</button>
